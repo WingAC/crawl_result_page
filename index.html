@@ -39,8 +39,9 @@
   .badge.sold { background:#eeeae6; color:var(--sold); }
   .actions { margin-top:auto; padding-top:8px; }
   .actions button { font-size:12px; padding:6px 8px; }
-  .manage-only { display:none; }
-  body.manage .manage-only { display:inline-flex; }
+  .gate, .auth-only { display:none; }
+  body.manage .gate { display:inline-flex; }
+  body.manage.authed .auth-only { display:inline-flex; }
   #token { min-width: 200px; }
   #syncStatus { color: var(--muted); font-size: 13px; align-items: center; }
   dialog { border:0; border-radius:16px; padding:0; width:min(560px, calc(100% - 24px)); }
@@ -77,14 +78,14 @@
     <option>中型</option>
   </select>
   <button id="toggleManage" type="button">管理</button>
-  <button class="manage-only primary" id="addBtn" type="button">新增</button>
-  <input class="manage-only" id="token" type="password" placeholder="GitHub token" autocomplete="off" spellcheck="false">
-  <button class="manage-only" id="saveToken" type="button">記住 token</button>
-  <button class="manage-only primary" id="pushBtn" type="button">儲存到 GitHub</button>
-  <button class="manage-only" id="exportJson" type="button">匯出 JSON</button>
-  <button class="manage-only" id="importJson" type="button">匯入 JSON</button>
-  <button class="manage-only danger" id="resetBtn" type="button">還原已發布</button>
-  <span class="manage-only" id="syncStatus"></span>
+  <input class="gate" id="token" type="password" placeholder="GitHub token" autocomplete="off" spellcheck="false">
+  <button class="gate" id="verifyBtn" type="button">驗證</button>
+  <span class="gate" id="syncStatus"></span>
+  <button class="auth-only primary" id="addBtn" type="button">新增</button>
+  <button class="auth-only primary" id="pushBtn" type="button">儲存到 GitHub</button>
+  <button class="auth-only" id="exportJson" type="button">匯出 JSON</button>
+  <button class="auth-only" id="importJson" type="button">匯入 JSON</button>
+  <button class="auth-only danger" id="resetBtn" type="button">還原已發布</button>
   <input id="file" type="file" accept="application/json" hidden>
 </div>
 <div class="grid" id="grid"></div>
@@ -203,7 +204,7 @@ function render() {
       return "<a href=\"" + esc(u) + "\" target=\"_blank\" rel=\"noopener\"><img alt=\"" + esc(i.name) + "\" src=\"" + esc(thumb(u)) + "\"></a>";
     }).join("");
     const link = i.linkUrl ? "<a href=\"" + esc(i.linkUrl) + "\" target=\"_blank\" rel=\"noopener\">" + esc(i.linkLabel || "參考連結") + "</a>" : esc(i.linkLabel || "");
-    return "<article class=\"" + cls + "\"><div class=\"photos" + (photos.length > 1 ? " two" : "") + "\">" + imgs + "</div><div class=\"body\"><div class=\"badges\">" + badge + "<span class=\"badge\">" + esc(i.series || "未分類") + "</span><span class=\"badge\">" + esc(i.size || "") + "</span></div><h2 class=\"name\">" + esc(i.name) + "</h2><div class=\"price\">" + money(i.price) + " · #" + esc(i.id) + "</div><div class=\"meta\">" + esc(i.color || "") + (i.note ? " · " + esc(i.note) : "") + "</div><div class=\"meta\">" + link + "</div><div class=\"actions\"><button class=\"manage-only\" data-act=\"hold\" data-id=\"" + i.id + "\">" + (i.hold ? "取消 Hold" : "Hold") + "</button><button class=\"manage-only\" data-act=\"sold\" data-id=\"" + i.id + "\">" + (i.sold ? "取消 Sold" : "Sold") + "</button><button class=\"manage-only\" data-act=\"edit\" data-id=\"" + i.id + "\">編輯</button></div></div></article>";
+    return "<article class=\"" + cls + "\"><div class=\"photos" + (photos.length > 1 ? " two" : "") + "\">" + imgs + "</div><div class=\"body\"><div class=\"badges\">" + badge + "<span class=\"badge\">" + esc(i.series || "未分類") + "</span><span class=\"badge\">" + esc(i.size || "") + "</span></div><h2 class=\"name\">" + esc(i.name) + "</h2><div class=\"price\">" + money(i.price) + " · #" + esc(i.id) + "</div><div class=\"meta\">" + esc(i.color || "") + (i.note ? " · " + esc(i.note) : "") + "</div><div class=\"meta\">" + link + "</div><div class=\"actions\"><button class=\"auth-only\" data-act=\"hold\" data-id=\"" + i.id + "\">" + (i.hold ? "取消 Hold" : "Hold") + "</button><button class=\"auth-only\" data-act=\"sold\" data-id=\"" + i.id + "\">" + (i.sold ? "取消 Sold" : "Sold") + "</button><button class=\"auth-only\" data-act=\"edit\" data-id=\"" + i.id + "\">編輯</button></div></div></article>";
   }).join("");
 }
 function tokenValue() { return document.getElementById("token").value.trim(); }
@@ -233,6 +234,8 @@ async function pushGithub() {
     const get = await fetch(api + "?ref=" + encodeURIComponent(GH.branch), { headers: headers, cache: "no-store" });
     let sha = "";
     if (get.status === 401 || get.status === 403) {
+      setAuthed(false);
+      localStorage.removeItem(TOKEN);
       const err = await get.json().catch(function () { return {}; });
       throw new Error(err.message || "token 無效或沒有權限");
     }
@@ -281,10 +284,49 @@ document.getElementById("grid").addEventListener("click", function (e) {
   markDirty(); render();
 });
 ["q","series","status","size"].forEach(function (id) { document.getElementById(id).addEventListener("input", render); });
+function setAuthed(on) { document.body.classList.toggle("authed", !!on); }
+async function verifyToken() {
+  const token = tokenValue();
+  if (!token) {
+    setAuthed(false);
+    localStorage.removeItem(TOKEN);
+    setStatus("請貼上 token");
+    return false;
+  }
+  setStatus("驗證中…");
+  try {
+    const res = await fetch("https://api.github.com/repos/" + GH.owner + "/" + GH.repo, { headers: ghHeaders(token), cache: "no-store" });
+    if (!res.ok) {
+      setAuthed(false);
+      localStorage.removeItem(TOKEN);
+      setStatus(res.status === 401 ? "token 無效" : "token 沒有這個 repo 的權限");
+      return false;
+    }
+    const repo = await res.json();
+    if (!repo.permissions || !repo.permissions.push) {
+      setAuthed(false);
+      localStorage.removeItem(TOKEN);
+      setStatus("token 沒有寫入權限");
+      return false;
+    }
+    localStorage.setItem(TOKEN, token);
+    setAuthed(true);
+    setStatus(dirty ? "有尚未上傳的修改" : "已驗證");
+    return true;
+  } catch (err) {
+    setAuthed(false);
+    setStatus("驗證失敗");
+    return false;
+  }
+}
 document.getElementById("toggleManage").onclick = function () {
-  document.body.classList.toggle("manage");
-  document.getElementById("toggleManage").textContent = document.body.classList.contains("manage") ? "離開管理" : "管理";
+  const on = document.body.classList.toggle("manage");
+  document.getElementById("toggleManage").textContent = on ? "離開管理" : "管理";
+  if (!on) { setAuthed(false); return; }
+  if (tokenValue()) verifyToken();
 };
+document.getElementById("token").addEventListener("input", function () { setAuthed(false); });
+document.getElementById("verifyBtn").onclick = verifyToken;
 document.getElementById("addBtn").onclick = function () { openForm(null); };
 document.getElementById("cancelBtn").onclick = function () { document.getElementById("dlg").close(); };
 document.getElementById("delBtn").onclick = function () {
@@ -350,12 +392,6 @@ document.getElementById("file").onchange = function (e) {
   };
   reader.readAsText(file);
   e.target.value = "";
-};
-document.getElementById("saveToken").onclick = function () {
-  const token = tokenValue();
-  if (!token) { localStorage.removeItem(TOKEN); setStatus("已清除 token"); return; }
-  localStorage.setItem(TOKEN, token);
-  setStatus("token 已記在這台瀏覽器");
 };
 document.getElementById("pushBtn").onclick = pushGithub;
 document.getElementById("resetBtn").onclick = async function () {
