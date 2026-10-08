@@ -104,7 +104,7 @@
   <input id="file" type="file" accept="application/json" hidden>
 </div>
 <div class="grid" id="grid"></div>
-<p class="foot">Copyright © WingA</p>
+<p class="foot">Copyright © <span id="year"></span> WingA. All rights reserved.</p>
 <dialog id="dlg">
   <form id="form">
     <h2 id="dlgTitle">編輯</h2>
@@ -151,6 +151,7 @@
   </div>
 </div>
 <script>
+document.getElementById("year").textContent = String(new Date().getFullYear());
 const GH = { owner: "wingac", repo: "crawl_result_page", branch: "main", path: "data.json" };
 const DRAFT = "jellycat-draft-v2";
 const TOKEN = "jellycat-gh-token";
