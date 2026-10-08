@@ -59,7 +59,7 @@
 <body>
 <header>
   <h1>Jellycat 公仔清單</h1>
-  <div class="sub">共 <span id="count">0</span> 件 · 公開清單讀 data.json</div>
+  <div class="sub">共 <span id="count">0</span> 件</div>
 </header>
 <div class="stats" id="stats"></div>
 <div class="bar">
@@ -81,6 +81,7 @@
   <input class="gate" id="token" type="password" placeholder="GitHub token" autocomplete="off" spellcheck="false">
   <button class="gate" id="verifyBtn" type="button">驗證</button>
   <span class="gate" id="syncStatus"></span>
+  <br>
   <button class="auth-only primary" id="addBtn" type="button">新增</button>
   <button class="auth-only primary" id="pushBtn" type="button">儲存到 GitHub</button>
   <button class="auth-only" id="exportJson" type="button">匯出 JSON</button>
@@ -106,7 +107,7 @@
     <datalist id="sizeList"><option value="匙扣"><option value="小型"><option value="中型"></datalist>
     <label>顏色／特徵<input name="color"></label>
     <label>備註<textarea name="note" rows="2"></textarea></label>
-    <label>參考連結文字<input name="linkLabel"></label>
+    <label>參考連結文字<input name="linkLabel" value="參考連結"></label>
     <label>參考連結網址<input name="linkUrl"></label>
     <label>圖片檔名<input name="imageName"></label>
     <label>圖片 Google Drive 連結<input name="imageUrl"></label>
@@ -203,7 +204,7 @@ function render() {
     const imgs = photos.map(function (u) {
       return "<a href=\"" + esc(u) + "\" target=\"_blank\" rel=\"noopener\"><img alt=\"" + esc(i.name) + "\" src=\"" + esc(thumb(u)) + "\"></a>";
     }).join("");
-    const link = i.linkUrl ? "<a href=\"" + esc(i.linkUrl) + "\" target=\"_blank\" rel=\"noopener\">" + esc(i.linkLabel || "參考連結") + "</a>" : esc(i.linkLabel || "");
+    const link = i.linkUrl ? "<a href=\"" + esc(i.linkUrl) + "\" target=\"_blank\" rel=\"noopener\">" + esc( "參考連結") + "</a>" : esc(i.linkLabel || "");
     return "<article class=\"" + cls + "\"><div class=\"photos" + (photos.length > 1 ? " two" : "") + "\">" + imgs + "</div><div class=\"body\"><div class=\"badges\">" + badge + "<span class=\"badge\">" + esc(i.series || "未分類") + "</span><span class=\"badge\">" + esc(i.size || "") + "</span></div><h2 class=\"name\">" + esc(i.name) + "</h2><div class=\"price\">" + money(i.price) + " · #" + esc(i.id) + "</div><div class=\"meta\">" + esc(i.color || "") + (i.note ? " · " + esc(i.note) : "") + "</div><div class=\"meta\">" + link + "</div><div class=\"actions\"><button class=\"auth-only\" data-act=\"hold\" data-id=\"" + i.id + "\">" + (i.hold ? "取消 Hold" : "Hold") + "</button><button class=\"auth-only\" data-act=\"sold\" data-id=\"" + i.id + "\">" + (i.sold ? "取消 Sold" : "Sold") + "</button><button class=\"auth-only\" data-act=\"edit\" data-id=\"" + i.id + "\">編輯</button></div></div></article>";
   }).join("");
 }
