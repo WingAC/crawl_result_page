@@ -41,6 +41,8 @@
   .actions button { font-size:12px; padding:6px 8px; }
   .manage-only { display:none; }
   body.manage .manage-only { display:inline-flex; }
+  #token { min-width: 200px; }
+  #syncStatus { color: var(--muted); font-size: 13px; align-items: center; }
   dialog { border:0; border-radius:16px; padding:0; width:min(560px, calc(100% - 24px)); }
   dialog::backdrop { background:rgba(44,36,28,.35); }
   form { padding:18px; display:grid; gap:8px; }
@@ -56,7 +58,7 @@
 <body>
 <header>
   <h1>Jellycat 公仔清單</h1>
-  <div class="sub">共 <span id="count">0</span> 件 · 圖片連到 Google Drive 原檔 · 狀態改動存在這台瀏覽器</div>
+  <div class="sub">共 <span id="count">0</span> 件 · 公開清單讀 data.json</div>
 </header>
 <div class="stats" id="stats"></div>
 <div class="bar">
@@ -76,14 +78,17 @@
   </select>
   <button id="toggleManage" type="button">管理</button>
   <button class="manage-only primary" id="addBtn" type="button">新增</button>
-  <button class="manage-only" id="exportHtml" type="button">下載更新 HTML</button>
+  <input class="manage-only" id="token" type="password" placeholder="GitHub token" autocomplete="off" spellcheck="false">
+  <button class="manage-only" id="saveToken" type="button">記住 token</button>
+  <button class="manage-only primary" id="pushBtn" type="button">儲存到 GitHub</button>
   <button class="manage-only" id="exportJson" type="button">匯出 JSON</button>
   <button class="manage-only" id="importJson" type="button">匯入 JSON</button>
-  <button class="manage-only danger" id="resetBtn" type="button">還原清單</button>
+  <button class="manage-only danger" id="resetBtn" type="button">還原已發布</button>
+  <span class="manage-only" id="syncStatus"></span>
   <input id="file" type="file" accept="application/json" hidden>
 </div>
 <div class="grid" id="grid"></div>
-<p class="foot">原相片資料夾：<a href="https://drive.google.com/drive/folders/1AJYjSBFVV17wFurrGm9MkKRJ0umXYrtP" target="_blank" rel="noopener">Google Drive</a>。管理改動只在本機；要留底請按「下載更新 HTML」。</p>
+<p class="foot">原相片資料夾：<a href="https://drive.google.com/drive/folders/1AJYjSBFVV17wFurrGm9MkKRJ0umXYrtP" target="_blank" rel="noopener">Google Drive</a>。改完按「儲存到 GitHub」。Token 只留在這台瀏覽器。</p>
 <dialog id="dlg">
   <form id="form">
     <h2 id="dlgTitle">編輯</h2>
@@ -114,22 +119,23 @@
       <button type="button" class="danger" id="delBtn">刪除</button>
       <span>
         <button type="button" id="cancelBtn">取消</button>
-        <button class="primary" type="submit">儲存</button>
+        <button class="primary" type="submit">套用</button>
       </span>
     </div>
   </form>
 </dialog>
 <script>
-
-const SEED = [{"hold":true,"sold":false,"id":1,"imageName":"IMG_4958.HEIC","imageUrl":"https://drive.google.com/file/d/1Hcw4JLigFJzwW2QLkxE6n0yNSDg0kt73/view","image2Name":"","image2Url":"","price":400,"linkLabel":"jELLYCAT|Zodihop Luxe Bunny 31cm 太空兔","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-bas3cos-in","name":"31cm 太空兔","series":"Bashful 垂耳兔","color":"藍紫綠幻彩、太空吊牌","size":"中型","note":"吊牌印 SPACE / JELLYCAT LONDON"},{"hold":false,"sold":false,"id":2,"imageName":"IMG_4959.HEIC","imageUrl":"https://drive.google.com/file/d/1_MTV8ZZyocA_RpNV5mg5SMO2qyl6WO4Y/view","image2Name":"","image2Url":"","price":380,"linkLabel":"https://eu.jellycat.com/bashful-luxe-bunny-scarlett/","linkUrl":"https://eu.jellycat.com/bashful-luxe-bunny-scarlett/","name":"31cm 紅色蕾絲領垂耳兔","series":"Bashful 垂耳兔","color":"深紅、白色蕾絲領、啡色蝴蝶結、珍珠","size":"中型","note":""},{"hold":false,"sold":false,"id":3,"imageName":"IMG_4960.HEIC","imageUrl":"https://drive.google.com/file/d/1J-5CwQMm7fNsIL-MHMZwk1iLx4MSkn4X/view","image2Name":"","image2Url":"","price":500,"linkLabel":"https://eu.jellycat.com/bashful-luxe-bunny-pine/","linkUrl":"https://eu.jellycat.com/bashful-luxe-bunny-pine/","name":"31cm 松果棕奢華致臻安撫兔","series":"Fuddlewuddle 捲毛兔","color":"灰褐捲毛","size":"中型","note":""},{"hold":true,"sold":false,"id":4,"imageName":"IMG_4961.HEIC","imageUrl":"https://drive.google.com/file/d/14TNUkdujH5Tk2RhBkOyAD8enLz59Ow6-/view","image2Name":"","image2Url":"","price":400,"linkLabel":"https://homemartliving.com/en/products/jellycat-bashful-%E4%B8%AD%E8%99%9F%E5%85%94%E5%AD%90%E6%AF%9B%E7%B5%A8%E7%8E%A9%E5%85%B7-31-%E5%8E%98%E7%B1%B3-%E7%B1%B3%E7%99%BD%E8%89%B2-bashful-bunny-medium-soft-toy-31cm-cream?srsltid=AU7gw4UBPyluHUu7oREZyzaQKl4WMi-AQuQ97EpvK7H0uxm_7Fr_qZMw","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/medium-bashful-bunny-cream/_/EOY676/product.lc","name":"31cm 白色垂耳兔","series":"Bashful 垂耳兔","color":"純白、淺粉鼻","size":"中型","note":"未見吊牌"},{"hold":false,"sold":false,"id":5,"imageName":"IMG_4962.HEIC","imageUrl":"https://drive.google.com/file/d/1mP6YrTd-W00h53VB-uavWG_bzLOKJpLj/view","image2Name":"","image2Url":"","price":350,"linkLabel":"Medium Bashful Bunny — Beige","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/medium-bashful-bunny-beige/_/EOY610/product.lc","name":"31cm 淺啡色賓尼兔","series":"Bashful 垂耳兔","color":"淺米色","size":"中型","note":"未見吊牌"},{"hold":true,"sold":false,"id":6,"imageName":"IMG_4963.HEIC","imageUrl":"https://drive.google.com/file/d/1bUXyeMoiGj11tQmhZUpGOhfUuII4Zi_T/view","image2Name":"","image2Url":"","price":300,"linkLabel":"jELLYCAT|Otto Sausage Dog 29cm 臘腸狗","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-ot3sd-in","name":"棕色臘腸狗","series":"狗","color":"深棕身體、淺啡嘴與腳、黑鼻","size":"中型","note":"側躺"},{"hold":false,"sold":false,"id":7,"imageName":"IMG_4964.HEIC","imageUrl":"https://drive.google.com/file/d/1d7bi2KpQJo9aavJG8MWY1mJcBIXGJS8c/view","image2Name":"","image2Url":"","price":350,"linkLabel":"jELLYCAT|Smudge Cow 柔軟趴趴小","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-smg2c-in","name":"黑白乳牛","series":"牛","color":"白身黑斑、米色角與鼻","size":"中型","note":"吊牌部分可見 JELLYCAT"},{"hold":false,"sold":false,"id":8,"imageName":"IMG_4965.HEIC","imageUrl":"https://drive.google.com/file/d/15IeOQVkaFpACTOYF1W2UmLR5mUp5v-yV/view","image2Name":"","image2Url":"","price":300,"linkLabel":"Amuseables Space Comet","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-space-comet/_/EQY910/product.lc","name":"趣怪太空彗星","series":"Amuseables 趣味物","color":"橙身、灰藍邊、黃粉尾巴、金腳","size":"小型","note":"太空吊牌 SPACE"},{"hold":true,"sold":false,"id":9,"imageName":"IMG_4966.HEIC","imageUrl":"https://drive.google.com/file/d/1d3lPXfhShuDLvn05idrb-N1JiwCjWPJ5/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://eu.jellycat.com/blossom-beige-bunny-petal-bag-charm/","linkUrl":"https://eu.jellycat.com/blossom-beige-bunny-petal-bag-charm/","name":"淺灰小垂耳兔 匙扣","series":"Bashful 小兔","color":"淺灰","size":"小型","note":"與另外兩隻同框（左）"},{"hold":true,"sold":false,"id":10,"imageName":"IMG_4966.HEIC","imageUrl":"https://drive.google.com/file/d/1d3lPXfhShuDLvn05idrb-N1JiwCjWPJ5/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://eu.jellycat.com/bashful-silver-bunny-bag-charm/","linkUrl":"https://eu.jellycat.com/bashful-silver-bunny-bag-charm/","name":"銀灰小垂耳兔 匙扣","series":"Bashful 小兔","color":"銀灰、右耳豎起","size":"小型","note":"與另外兩隻同框（中）"},{"hold":false,"sold":false,"id":11,"imageName":"IMG_4966.HEIC","imageUrl":"https://drive.google.com/file/d/1d3lPXfhShuDLvn05idrb-N1JiwCjWPJ5/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://eu.jellycat.com/bashful-silver-bunny-bag-charm/","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/little-blossom-petal-bunny-beige/_/EQO750/product.lc","name":"銀灰小垂耳兔 匙扣","series":"Bashful 小兔","color":"米色、粉紫碎花耳裡與腳底","size":"小型","note":"與另外兩隻同框（右）"},{"hold":false,"sold":false,"id":12,"imageName":"IMG_4967.HEIC","imageUrl":"https://drive.google.com/file/d/1WcBy9MfdEf2ZSXVxhdGqSzs-YykHlfeN/view","image2Name":"","image2Url":"","price":120,"linkLabel":"Amuseables Peanut Bag Charm","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-peanut-bag-charm/_/EUA531/product.lc","name":"花生匙扣","series":"Amuseables 匙扣","color":"米色花生、布腳、金屬圈","size":"匙扣","note":""},{"hold":false,"sold":false,"id":13,"imageName":"IMG_4968.HEIC","imageUrl":"https://drive.google.com/file/d/1AvpDw_SwRNlnGTyalUAJSw1n81htzWN8/view","image2Name":"","image2Url":"","price":200,"linkLabel":"Amuseables Peanut Space Rodeo Outfit","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-peanut-space-rodeo-outfit/_/EQY913/product.lc","name":"星空帽銀靴花生","series":"Amuseables","color":"米色花生、紫藍星空帽、銀色靴","size":"小型","note":""},{"hold":false,"sold":false,"id":14,"imageName":"IMG_4970.HEIC","imageUrl":"https://drive.google.com/file/d/1Ftc-SxsPb3AxoMZ5VqZ8zvu423W4-Ear/view","image2Name":"IMG_4971.HEIC","image2Url":"https://drive.google.com/file/d/1OSPykOGq6iFfkMBzghpOqR1dxbPAVZE7/view","price":220,"linkLabel":"Sky Dragon Bag Charm","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/sky-dragon-bag-charm/_/EQJ877/product.lc","name":"藍色飛龍匙扣","series":"龍 匙扣","color":"淺藍、白翼白角、彩點背刺","size":"匙扣","note":"兩張為同一隻不同角度；吊牌可見 £28.00"},{"hold":false,"sold":false,"id":15,"imageName":"IMG_4972.HEIC","imageUrl":"https://drive.google.com/file/d/1K6RpG7D1N77P-lMbzG01pnBhIA6iu54J/view","image2Name":"","image2Url":"","price":200,"linkLabel":"jELLYCAT|Amuseable Carole Canelé 可麗露","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-a6cne-in","name":"可麗露","series":"Amuseables 趣味物","color":"啡橙色、頂部有凹槽與中心","size":"小型","note":"外觀判斷，似环形蛋糕／小南瓜"},{"hold":true,"sold":false,"id":16,"imageName":"IMG_4973.HEIC","imageUrl":"https://drive.google.com/file/d/1c2gct259M4ctea2U09lMxAtbYQn7-SiT/view","image2Name":"","image2Url":"","price":200,"linkLabel":"jELLYCAT|Siofra Shamrock 幸運三葉草","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-a6shm-in","name":"幸運三葉草","series":"Amuseables 趣味物","color":"綠色花球、啡色腳","size":"小型","note":"連連卡佛吊牌，標價 HKD 275"},{"hold":false,"sold":false,"id":17,"imageName":"IMG_4974.HEIC","imageUrl":"https://drive.google.com/file/d/1kBbexKY9kpx5Prp_85d_cutupt_4cp0D/view","image2Name":"","image2Url":"","price":200,"linkLabel":"Amuseables Horatio Pistachio","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-horatio-pistachio/_/EOY670/product.lc","name":"開心果","series":"Amuseables 趣味物","color":"綠仁、米色殼、布腳","size":"小型","note":""},{"hold":false,"sold":false,"id":18,"imageName":"IMG_4975.HEIC","imageUrl":"https://drive.google.com/file/d/1ywqpUXrPS5E0GeYBkoCj9FmsIoaeAMmu/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://eu.jellycat.com/amuseables-coffee-to-go-bag-charm/","linkUrl":"https://eu.jellycat.com/amuseables-coffee-to-go-bag-charm/","name":"外賣咖啡杯匙扣","series":"Amuseables 匙扣","color":"白奶蓋、啡杯身、條紋杯套","size":"匙扣","note":""},{"hold":true,"sold":false,"id":19,"imageName":"IMG_4976.HEIC","imageUrl":"https://drive.google.com/file/d/1UP_XugF-M_ZMplmSQa1dLX9TVTzn-KO6/view","image2Name":"","image2Url":"","price":120,"linkLabel":"Small Peanut Penguin","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/small-peanut-penguin/_/EOY494/product.lc","name":"企鵝","series":"Amuseables 動物","color":"黑白、橙嘴橙腳","size":"小型","note":""},{"hold":true,"sold":false,"id":20,"imageName":"IMG_4977.HEIC","imageUrl":"https://drive.google.com/file/d/1A-KIjON7icBLHwQ_9umbgM_Cwpe0gwNC/view","image2Name":"","image2Url":"","price":120,"linkLabel":"Amuseables Happy Boiled Egg","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-happy-boiled-egg/_/EQX003/product.lc","name":"水煮蛋匙扣","series":"Amuseables 匙扣","color":"蛋白、黃蛋黃臉、布腳","size":"匙扣","note":""},{"hold":false,"sold":false,"id":21,"imageName":"IMG_4978.HEIC","imageUrl":"https://drive.google.com/file/d/1nlH1hZlRcrU3Br8PSLmzx20RapViTRM_/view","image2Name":"","image2Url":"","price":150,"linkLabel":"https://eu.jellycat.com/amuseables-boiled-egg-geek/","linkUrl":"https://eu.jellycat.com/amuseables-boiled-egg-geek/","name":"戴眼鏡水煮蛋","series":"Amuseables 趣味物","color":"蛋白、眼鏡、白鞋紅邊","size":"小型","note":""},{"hold":true,"sold":false,"id":22,"imageName":"IMG_4979.HEIC","imageUrl":"https://drive.google.com/file/d/1iVTqDo394dvN9gteEVq7yhgIrQvsMC5s/view","image2Name":"","image2Url":"","price":250,"linkLabel":"https://www.barbiebox.store/products/jellycat-doll-a4mtnr-in","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-a4mtnr-in","name":"淺藍色毛邊手套","series":"Amuseables 趣味物","color":"淺藍手套、白毛邊、啡腳","size":"小型","note":""},{"hold":true,"sold":false,"id":23,"imageName":"IMG_4981.HEIC","imageUrl":"https://drive.google.com/file/d/11sRJ3HVvcB_qsTQfGGq0ulo4sJUBm4Os/view","image2Name":"","image2Url":"","price":250,"linkLabel":"Amuseables Baguette Bag Charm","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-baguette-bag-charm/_/EOY617/product.lc","name":"法棍麵包匙扣","series":"Amuseables 匙扣","color":"長棍、斜切口、布腳","size":"匙扣","note":""},{"hold":true,"sold":false,"id":24,"imageName":"IMG_4982.HEIC","imageUrl":"https://drive.google.com/file/d/1FudUjsvBjGOu6U9B5-L8RBB9vRqW46kh/view","image2Name":"","image2Url":"","price":300,"linkLabel":"Amuseables Croissant","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-croissant/_/EOY658/product.lc","name":"牛角包匙扣","series":"Amuseables 匙扣","color":"金棕色可頌、布腳","size":"匙扣","note":""},{"hold":true,"sold":false,"id":25,"imageName":"IMG_4983.HEIC","imageUrl":"https://drive.google.com/file/d/1NZVTSsbLVcRsjqKsAOf_3AuFEGTTak5s/view","image2Name":"","image2Url":"","price":400,"linkLabel":"jELLYCAT|Avocado Bag Charm牛油果鎖匙扣","linkUrl":"https://www.barbiebox.store/products/jellycat-charm-a4avbc-in","name":"牛油果匙扣","series":"Amuseables 匙扣","color":"綠果肉、啡核、深色皮","size":"匙扣","note":""},{"hold":true,"sold":false,"id":26,"imageName":"IMG_4984.HEIC","imageUrl":"https://drive.google.com/file/d/13Z6XYj4BHh23TX3IALC94ci0A0q9hb-2/view","image2Name":"","image2Url":"","price":250,"linkLabel":"Ooky Jack O Lantern","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/ooky-jack-o-lantern/_/EUI813/product.lc","name":"萬聖節南瓜燈","series":"Amuseables 節日","color":"橙色、三角眼、彎嘴、啡柄","size":"小型","note":""},{"hold":false,"sold":false,"id":27,"imageName":"IMG_4986.HEIC","imageUrl":"https://drive.google.com/file/d/19HkWxb19IC3wEfqu2fbp3F2oxsxzMU6e/view","image2Name":"","image2Url":"","price":450,"linkLabel":"https://eu.jellycat.com/lavender-dragon/","linkUrl":"https://eu.jellycat.com/lavender-dragon/","name":"50cm 紫龍","series":"龍","color":"淺紫、亮片翼與角、長尾","size":"中型","note":"側躺"},{"hold":false,"sold":false,"id":28,"imageName":"IMG_4987.HEIC","imageUrl":"https://drive.google.com/file/d/1SWy7jheMaosSXjTWLonPC1rd0xuMbxVo/view","image2Name":"","image2Url":"","price":500,"linkLabel":"jELLYCAT|Sky Dragon Large 50cm 天空龍","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-sky2dd-in","name":"50cm 天空龍","series":"龍","color":"淺藍、白翼、紅黃綠彩刺、白爪","size":"中型","note":"側躺；與匙扣款同系列較大隻"},{"hold":true,"sold":false,"id":29,"imageName":"IMG_4942.HEIC","imageUrl":"https://drive.google.com/file/d/12SF9450B0f4PB2IhOFN6h0VndOoxTq0G/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-sports-badminton/_/EQV800/product.lc?srsltid=AU7gw4XXkpvZ5zY8hE-2i4oQcASa0Rnjn5v8i6nHhsc-QBvEtmYEtXZC","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-sports-badminton/_/EQV800/product.lc?srsltid=AU7gw4XXkpvZ5zY8hE-2i4oQcASa0Rnjn5v8i6nHhsc-QBvEtmYEtXZC","name":"可愛羽毛球","series":"Amuseables 趣味物","color":"白花瓣、紅頭帶、啡手臂","size":"小型","note":""},{"hold":false,"sold":false,"id":30,"imageName":"IMG_4943.HEIC","imageUrl":"https://drive.google.com/file/d/1g2xq3Wv0j3Z-QQR2sTMIoripGilqa_pc/view","image2Name":"","image2Url":"","price":150,"linkLabel":"jELLYCAT|Amuseables Espresso Cup 濃縮咖啡","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-a6ec-in","name":"濃縮咖啡","series":"Amuseables 趣味物","color":"白杯、杯柄、深啡腳","size":"小型","note":""},{"hold":false,"sold":false,"id":31,"imageName":"IMG_4944.HEIC","imageUrl":"https://drive.google.com/file/d/1gFOmlJpFdJgL6G0ydShDHZx5uPv-I1Yq/view","image2Name":"","image2Url":"","price":150,"linkLabel":"Amuseables Pair of Marshmallows Bag Charm","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-pair-of-marshmallows-bag-charm/_/EOY622/product.lc","name":"棉花糖匙扣","series":"Amuseables 匙扣","color":"粉紅、白色、淺粉腮紅、布腳","size":"匙扣","note":"粉紅色與白色棉花糖同框"},{"hold":true,"sold":false,"id":33,"imageName":"IMG_4945.HEIC","imageUrl":"https://drive.google.com/file/d/1GnI6Ja5rHm24tfHXYTZDohXjwUlNE6HN/view","image2Name":"","image2Url":"","price":150,"linkLabel":"https://eu.jellycat.com/fluffy-crab/#product-reviews","linkUrl":"https://eu.jellycat.com/fluffy-crab/","name":"粉紅色螃蟹","series":"Amuseables 動物","color":"淺粉、大鉗","size":"小型","note":""},{"hold":false,"sold":false,"id":34,"imageName":"IMG_4947.HEIC","imageUrl":"https://drive.google.com/file/d/197UGr7mgJQaWx-dhCE_scuDxdzdAtJx3/view","image2Name":"","image2Url":"","price":250,"linkLabel":"jELLYCAT|Blossom Silver Bunny 'Bloom' 灰色碎花賓尼兔(S)","linkUrl":"https://www.barbiebox.store/products/jellycat-doll-bps6bj-in","name":"18cm 灰色碎花賓尼兔","series":"Bashful 垂耳兔","color":"淺灰、深藍白碎花耳裡與腳底","size":"中型","note":""},{"hold":true,"sold":false,"id":35,"imageName":"IMG_4948.HEIC","imageUrl":"https://drive.google.com/file/d/125Cpt5fIUbZCp5GrxGljlM70k0Tb9UZM/view","image2Name":"","image2Url":"","price":250,"linkLabel":"https://www.babyonline.com.hk/hk/jellycat-bashful-blush-bunny-small-18cm-jellycat?srsltid=AU7gw4Ugt6m9OmXmslejO8V3GzgXeIYwxb-xyswCu1aaK6HBnwJYUJEM","linkUrl":"https://www.babyonline.com.hk/hk/jellycat-bashful-blush-bunny-small-18cm-jellycat?srsltid=AU7gw4Ugt6m9OmXmslejO8V3GzgXeIYwxb-xyswCu1aaK6HBnwJYUJEM","name":"18cm 淺粉垂耳兔","series":"Bashful 垂耳兔","color":"淺粉","size":"中型","note":""},{"hold":false,"sold":false,"id":36,"imageName":"IMG_4949.HEIC","imageUrl":"https://drive.google.com/file/d/1uwsSZxarA0qNax8tvnzDye79lOwgsZU0/view","image2Name":"","image2Url":"","price":220,"linkLabel":"https://eu.jellycat.com/bashful-allium-bunny/","linkUrl":"https://eu.jellycat.com/bashful-allium-bunny/","name":"18cm 紫色垂耳兔","series":"Bashful 垂耳兔","color":"鮮紫、淺粉鼻","size":"中型","note":""},{"hold":false,"sold":false,"id":37,"imageName":"IMG_4950.HEIC","imageUrl":"https://drive.google.com/file/d/1PZ8hD9WmEnWrGn2JEX-GSh3Uqk4o545_/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://www.carousell.com.hk/p/jellycat-%F0%9F%92%99-little-bashful-saffyre-bunny-18cm-1452923338/?t-id=7DZHuz9_LP_1791393181187\u0026t-referrer_browse_type=search_results\u0026t-referrer_context=global_slp\u0026t-referrer_request_id=s_4vE6AUzk5_z0vC\u0026t-referrer_search_query=jellycat%20bunny%2018cm\u0026t-referrer_source=search_landing\u0026t-tap_index=36","linkUrl":"https://www.carousell.com.hk/p/jellycat-%F0%9F%92%99-little-bashful-saffyre-bunny-18cm-1452923338/?t-id=7DZHuz9_LP_1791393181187\u0026t-referrer_browse_type=search_results\u0026t-referrer_context=global_slp\u0026t-referrer_request_id=s_4vE6AUzk5_z0vC\u0026t-referrer_search_query=jellycat%20bunny%2018cm\u0026t-referrer_source=search_landing\u0026t-tap_index=36","name":"18cm 深藍垂耳兔","series":"Bashful 垂耳兔","color":"海軍藍、淺粉鼻","size":"中型","note":""},{"hold":false,"sold":false,"id":38,"imageName":"IMG_4951.HEIC","imageUrl":"https://drive.google.com/file/d/1vkjsMeGZxrQ_7Ug4eKC2hEP-0D2rMBuq/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://eu.jellycat.com/amuseables-pencil/","linkUrl":"https://eu.jellycat.com/amuseables-pencil/","name":"黃色鉛筆","series":"Amuseables 趣味物","color":"黃筆身、粉灰擦膠、黑筆尖、黑腳","size":"小型","note":"橫放"},{"hold":false,"sold":false,"id":39,"imageName":"IMG_4952.HEIC","imageUrl":"https://drive.google.com/file/d/1Wb-vlmwtGMYFAtm2QymlrtKEYFgcaRpD/view","image2Name":"","image2Url":"","price":200,"linkLabel":"Amuseables Egglantine Egg on Toast","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/amuseables-egglantine-egg-on-toast/_/ERG410/product.lc","name":"太陽蛋多士","series":"Amuseables 趣味物","color":"黃蛋、蛋白、啡多士、白鞋","size":"小型","note":""},{"hold":false,"sold":false,"id":40,"imageName":"IMG_4954.HEIC","imageUrl":"https://drive.google.com/file/d/157SqgKmH42pTlcAtpcc9xKxGSVZ9c7sK/view","image2Name":"","image2Url":"","price":400,"linkLabel":"https://eu.jellycat.com/bashful-luxe-bunny-juniper/","linkUrl":"https://eu.jellycat.com/bashful-luxe-bunny-juniper/","name":"31cm 琥珀間紋中兔","series":"Fuddlewuddle 捲毛兔","color":"薑棕條紋捲毛","size":"中型","note":""},{"hold":false,"sold":false,"id":41,"imageName":"IMG_4955.HEIC","imageUrl":"https://drive.google.com/file/d/1xhMiyFiIts0_IXV5V-jhcyFfxnb0rvpH/view","image2Name":"","image2Url":"","price":200,"linkLabel":"https://www.babyonline.com.hk/hk/jellycat-bashful-lilac-bunny-medium-31cm-%E6%B7%BA%E7%B4%AB%E8%89%B2-jellycat","linkUrl":"https://www.babyonline.com.hk/hk/jellycat-bashful-lilac-bunny-medium-31cm-%E6%B7%BA%E7%B4%AB%E8%89%B2-jellycat","name":"31cm 藕粉垂耳兔","series":"Bashful 垂耳兔","color":"藕粉／淡粉紫","size":"中型","note":""},{"hold":true,"sold":false,"id":42,"imageName":"IMG_4956.HEIC","imageUrl":"https://drive.google.com/file/d/1rvb7C7UT3IAmXhKcX6qsbnzb8r0jagWS/view","image2Name":"","image2Url":"","price":350,"linkLabel":"Cream Bunny with Star","linkUrl":"https://www.lanecrawford.com.hk/product/jellycat/cream-bunny-with-star/_/EQX200/product.lc","name":"31cm 白色垂耳兔抱金色星星","series":"Bashful 垂耳兔","color":"白色、手抱金色笑臉星星","size":"中型","note":""}];
-const KEY = "jellycat-inventory-v1";
-let items = load();
+const GH = { owner: "wingac", repo: "crawl_result_page", branch: "main", path: "data.json" };
+const DRAFT = "jellycat-draft-v2";
+const TOKEN = "jellycat-gh-token";
+let items = [];
 let editing = null;
-function load() {
-  try { const raw = localStorage.getItem(KEY); if (raw) return JSON.parse(raw); } catch (e) {}
-  return JSON.parse(JSON.stringify(SEED));
+let dirty = false;
+
+function setStatus(text) {
+  const el = document.getElementById("syncStatus");
+  if (el) el.textContent = text || "";
 }
-function save() { localStorage.setItem(KEY, JSON.stringify(items)); }
 function driveId(url) {
   if (!url) return "";
   const m = String(url).match(/\/d\/([^/]+)/) || String(url).match(/[?&]id=([^&]+)/);
@@ -146,6 +152,11 @@ function esc(s) {
   });
 }
 function byId(id) { return items.filter(function (i) { return String(i.id) === String(id); })[0]; }
+function markDirty() {
+  dirty = true;
+  localStorage.setItem(DRAFT, JSON.stringify(items));
+  setStatus("有尚未上傳的修改");
+}
 function render() {
   const q = document.getElementById("q").value.trim().toLowerCase();
   const series = document.getElementById("series").value;
@@ -195,6 +206,70 @@ function render() {
     return "<article class=\"" + cls + "\"><div class=\"photos" + (photos.length > 1 ? " two" : "") + "\">" + imgs + "</div><div class=\"body\"><div class=\"badges\">" + badge + "<span class=\"badge\">" + esc(i.series || "未分類") + "</span><span class=\"badge\">" + esc(i.size || "") + "</span></div><h2 class=\"name\">" + esc(i.name) + "</h2><div class=\"price\">" + money(i.price) + " · #" + esc(i.id) + "</div><div class=\"meta\">" + esc(i.color || "") + (i.note ? " · " + esc(i.note) : "") + "</div><div class=\"meta\">" + link + "</div><div class=\"actions\"><button class=\"manage-only\" data-act=\"hold\" data-id=\"" + i.id + "\">" + (i.hold ? "取消 Hold" : "Hold") + "</button><button class=\"manage-only\" data-act=\"sold\" data-id=\"" + i.id + "\">" + (i.sold ? "取消 Sold" : "Sold") + "</button><button class=\"manage-only\" data-act=\"edit\" data-id=\"" + i.id + "\">編輯</button></div></div></article>";
   }).join("");
 }
+function tokenValue() { return document.getElementById("token").value.trim(); }
+function ghHeaders(token) {
+  return {
+    Accept: "application/vnd.github+json",
+    Authorization: "Bearer " + token,
+    "X-GitHub-Api-Version": "2022-11-28"
+  };
+}
+function b64(str) {
+  const bytes = new TextEncoder().encode(str);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+async function pushGithub() {
+  const token = tokenValue();
+  if (!token) { alert("請先貼上 GitHub token"); return; }
+  localStorage.setItem(TOKEN, token);
+  const btn = document.getElementById("pushBtn");
+  btn.disabled = true;
+  setStatus("上傳中…");
+  try {
+    const api = "https://api.github.com/repos/" + GH.owner + "/" + GH.repo + "/contents/" + GH.path;
+    const headers = ghHeaders(token);
+    const get = await fetch(api + "?ref=" + encodeURIComponent(GH.branch), { headers: headers, cache: "no-store" });
+    let sha = "";
+    if (get.status === 401 || get.status === 403) {
+      const err = await get.json().catch(function () { return {}; });
+      throw new Error(err.message || "token 無效或沒有權限");
+    }
+    if (get.ok) {
+      sha = (await get.json()).sha;
+    } else if (get.status !== 404) {
+      const err = await get.json().catch(function () { return {}; });
+      throw new Error(err.message || "讀取 data.json 失敗");
+    }
+    const body = {
+      message: "Update listing",
+      content: b64(JSON.stringify(items, null, 2) + "\n"),
+      branch: GH.branch
+    };
+    if (sha) body.sha = sha;
+    const put = await fetch(api, { method: "PUT", headers: headers, body: JSON.stringify(body) });
+    if (!put.ok) {
+      const err = await put.json().catch(function () { return {}; });
+      throw new Error(err.message || "上傳失敗");
+    }
+    localStorage.removeItem(DRAFT);
+    dirty = false;
+    setStatus("已上傳。約一分鐘後重新整理公開頁。");
+  } catch (err) {
+    setStatus(err.message || "上傳失敗");
+    alert(err.message || "上傳失敗");
+  } finally {
+    btn.disabled = false;
+  }
+}
+async function loadPublished() {
+  const res = await fetch("data.json?ts=" + Date.now(), { cache: "no-store" });
+  if (!res.ok) throw new Error("讀不到 data.json");
+  const data = await res.json();
+  if (!Array.isArray(data)) throw new Error("data.json 格式不正確");
+  return data;
+}
 document.getElementById("grid").addEventListener("click", function (e) {
   const btn = e.target.closest("button");
   if (!btn) return;
@@ -203,7 +278,7 @@ document.getElementById("grid").addEventListener("click", function (e) {
   if (btn.dataset.act === "hold") { item.hold = !item.hold; if (item.hold) item.sold = false; }
   if (btn.dataset.act === "sold") { item.sold = !item.sold; if (item.sold) item.hold = false; }
   if (btn.dataset.act === "edit") return openForm(item);
-  save(); render();
+  markDirty(); render();
 });
 ["q","series","status","size"].forEach(function (id) { document.getElementById(id).addEventListener("input", render); });
 document.getElementById("toggleManage").onclick = function () {
@@ -216,7 +291,7 @@ document.getElementById("delBtn").onclick = function () {
   if (!editing) return;
   if (!confirm("刪除這件？")) return;
   items = items.filter(function (i) { return i !== editing; });
-  save(); document.getElementById("dlg").close(); render();
+  markDirty(); document.getElementById("dlg").close(); render();
 };
 function openForm(item) {
   editing = item;
@@ -256,37 +331,59 @@ document.getElementById("form").onsubmit = function (e) {
   if (obj.hold && obj.sold) obj.hold = false;
   if (items.some(function (i) { return i !== editing && Number(i.id) === obj.id; })) { alert("編號已存在"); return; }
   if (editing) Object.assign(editing, obj); else items.push(obj);
-  save(); document.getElementById("dlg").close(); render();
+  markDirty(); document.getElementById("dlg").close(); render();
 };
 function download(name, text, type) {
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([text], {type: type || "text/plain"}));
   a.download = name; a.click();
 }
-document.getElementById("exportJson").onclick = function () { download("jellycat.json", JSON.stringify(items, null, 2), "application/json"); };
-document.getElementById("exportHtml").onclick = function () {
-  const src = document.documentElement.outerHTML;
-  const start = src.indexOf("const SEED = ");
-  const end = src.indexOf(";\nconst KEY", start);
-  const packed = JSON.stringify(items).replace(/</g, "\\u003c").replace(/>/g, "\\u003e").replace(/&/g, "\\u0026");
-  download("jellycat.html", "<!DOCTYPE html>\n" + src.slice(0, start) + "const SEED = " + packed + src.slice(end), "text/html");
-};
+document.getElementById("exportJson").onclick = function () { download("data.json", JSON.stringify(items, null, 2) + "\n", "application/json"); };
 document.getElementById("importJson").onclick = function () { document.getElementById("file").click(); };
 document.getElementById("file").onchange = function (e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = function () { items = JSON.parse(String(reader.result)); save(); render(); };
+  reader.onload = function () {
+    const data = JSON.parse(String(reader.result));
+    if (!Array.isArray(data)) { alert("JSON 必須是陣列"); return; }
+    items = data; markDirty(); render();
+  };
   reader.readAsText(file);
   e.target.value = "";
 };
-document.getElementById("resetBtn").onclick = function () {
-  if (!confirm("還原成檔案內的原始清單？本機改動會消失。")) return;
-  localStorage.removeItem(KEY);
-  items = JSON.parse(JSON.stringify(SEED));
-  save(); render();
+document.getElementById("saveToken").onclick = function () {
+  const token = tokenValue();
+  if (!token) { localStorage.removeItem(TOKEN); setStatus("已清除 token"); return; }
+  localStorage.setItem(TOKEN, token);
+  setStatus("token 已記在這台瀏覽器");
 };
-render();
-
+document.getElementById("pushBtn").onclick = pushGithub;
+document.getElementById("resetBtn").onclick = async function () {
+  if (!confirm("還原成網站上已發布的 data.json？尚未上傳的修改會消失。")) return;
+  try {
+    items = await loadPublished();
+    localStorage.removeItem(DRAFT);
+    dirty = false;
+    setStatus("已還原成發布版本");
+    render();
+  } catch (err) {
+    alert(err.message || "還原失敗");
+  }
+};
+loadPublished().then(function (data) {
+  const saved = localStorage.getItem(TOKEN);
+  if (saved) document.getElementById("token").value = saved;
+  const draft = localStorage.getItem(DRAFT);
+  if (draft) {
+    try { items = JSON.parse(draft); dirty = true; setStatus("有尚未上傳的修改"); }
+    catch (e) { items = data; }
+  } else {
+    items = data;
+  }
+  render();
+}).catch(function (err) {
+  document.getElementById("grid").innerHTML = "<div class=\"empty\">" + esc(err.message || "讀不到 data.json") + "</div>";
+});
 </script>
 </body>
 </html>
