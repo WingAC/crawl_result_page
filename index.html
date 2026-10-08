@@ -216,7 +216,8 @@ function render() {
     ["Sold", solds.length, sum(solds)],
     ["顯示中", shown.length, sum(shown)]
   ].map(function (row) {
-    return "<div class=\"stat\"><b>" + row[1] + "</b><span>" + row[0] + " · " + money(row[2]) + "</span></div>";
+    const showMoney = document.body.classList.contains("manage") && document.body.classList.contains("authed");
+    return "<div class=\"stat\"><b>" + row[1] + "</b><span>" + row[0] + (showMoney ? " · " + money(row[2]) : "") + "</span></div>";
   }).join("");
   const grid = document.getElementById("grid");
   if (!shown.length) { grid.innerHTML = "<div class=\"empty\">沒有符合的項目</div>"; return; }
@@ -309,7 +310,10 @@ document.getElementById("grid").addEventListener("click", function (e) {
   markDirty(); render();
 });
 ["q","series","status","size"].forEach(function (id) { document.getElementById(id).addEventListener("input", render); });
-function setAuthed(on) { document.body.classList.toggle("authed", !!on); }
+function setAuthed(on) {
+  document.body.classList.toggle("authed", !!on);
+  if (items.length) render();
+}
 async function verifyToken() {
   const token = tokenValue();
   if (!token) {
