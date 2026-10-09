@@ -357,8 +357,8 @@
     "note": ""
   },
   {
-    "hold": true,
-    "sold": false,
+    "hold": false,
+    "sold": true,
     "id": 22,
     "imageName": "IMG_4979.HEIC",
     "imageUrl": "https://drive.google.com/file/d/1iVTqDo394dvN9gteEVq7yhgIrQvsMC5s/view",
