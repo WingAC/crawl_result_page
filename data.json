@@ -85,8 +85,8 @@
     "note": "未見吊牌"
   },
   {
-    "hold": true,
-    "sold": false,
+    "hold": false,
+    "sold": true,
     "id": 6,
     "imageName": "IMG_4963.HEIC",
     "imageUrl": "https://drive.google.com/file/d/1bUXyeMoiGj11tQmhZUpGOhfUuII4Zi_T/view",
